@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spiral Resonance Scalar Field Vortex</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Spiral Resonance Scalar Field<br>n=2, ω=1, k=1</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script>
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Parameters for the scalar field
+        const A = 1; // Amplitude
+        const omega = 1; // Spiral frequency
+        const n = 2; // Number of spiral arms
+        const k = 1; // Time evolution speed
+        const z = 0; // Fixed z-plane for 2D slice
+        const rMax = 5; // Maximum radius for visualization
+        const resolution = 50; // Grid resolution for r and theta
+
+        // Create a plane geometry to represent the field
+        const geometry = new THREE.PlaneGeometry(10, 10, resolution, resolution);
+        const material = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            side: THREE.DoubleSide
+        });
+        const plane = new THREE.Mesh(geometry, material);
+        scene.add(plane);
+
+        // Camera position (looking down at the plane with a slight tilt)
+        camera.position.set(0, 5, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Function to compute the scalar field value
+        function getFieldValue(r, theta, t) {
+            return A * Math.cos(omega * Math.log(r) + n * theta - k * t);
+        }
+
+        // Function to update vertex colors based on the field
+        function updateField(t) {
+            const positions = geometry.attributes.position.array;
+            const colors = new Float32Array(positions.length);
+            const dr = rMax / resolution;
+            const dtheta = (2 * Math.PI) / resolution;
+
+            for (let i = 0; i <= resolution; i++) {
+                for (let j = 0; j <= resolution; j++) {
+                    // Convert grid to polar coordinates
+                    const r = dr * i;
+                    const theta = dtheta * j;
+                    if (r === 0) continue; // Avoid log(0)
+
+                    // Compute field value
+                    const value = getFieldValue(r, theta, t);
+
+                    // Map to Cartesian coordinates for the plane
+                    const x = r * Math.cos(theta);
+                    const y = r * Math.sin(theta);
+                    const index = (i * (resolution + 1) + j) * 3;
+                    positions[index] = x;
+                    positions[index + 1] = y;
+                    positions[index + 2] = 0;
+
+                    // Color based on field value (blue for positive, dark for negative)
+                    const color = new THREE.Color();
+                    if (value > 0) {
+                        color.setRGB(value, value, 1); // Blue for positive
+                    } else {
+                        color.setRGB(0, 0, -value * 0.5); // Dark for negative
+                    }
+                    colors[index] = color.r;
+                    colors[index + 1] = color.g;
+                    colors[index + 2] = color.b;
+                }
+            }
+
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+        }
+
+        // Animation loop
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05; // Increment time for animation
+            updateField(time);
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation
+        updateField(time);
+        animate();
+    </script>
+</body>
+</html>
